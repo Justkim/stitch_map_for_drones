@@ -26,9 +26,7 @@ void symmetryTest(const std::vector<cv::DMatch> &matches1,const std::vector<cv::
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
- //   MainWindow w;
-     Mat map;
-   // w.show();
+    Mat map;
     vector<KeyPoint> kp1;
     vector<KeyPoint> kp2;
     int flag=0;
@@ -38,39 +36,48 @@ int main(int argc, char *argv[])
 
     double offsetX = 0.0;
     double offsetY = 0.0;
+    double savedOffsetX=0;
+    double savedOffsetY=0;
 
     vector<Mat> savedHoms;
     vector<Mat> savedrevHoms;
+    Mat revhom1;
+    Mat revhom2;
+    std::vector<cv::Point2f> cornersTransform(4);
 
 
-    for(int i=1;i<4;i++)
+
+    for(int i=1;i<16;i++)
     {
 
 
     stringstream conversion;
-     stringstream conversion1;
-    //conversion <<"/home/atena/Desktop/n1.jpg";
-    conversion <<"/home/kim/Desktop/tests/"<<i<<".jpg";
+    stringstream conversion1;
+    conversion <<"/home/kim/Desktop/normal_pics/"<<i<<".jpg";
     string name=conversion.str();
-    conversion1 <<"/home/kim/Desktop/tests/"<<i+1<<".jpg";
+    conversion1 <<"/home/kim/Desktop/normal_pics/"<<i+1<<".jpg";
     if(flag==1)
     {
-        map=imread("/home/kim/Desktop/tests/result1.jpg");
+        map=imread("/home/kim/Desktop/r/result1.jpg");
     }
     string name1=conversion1.str();
-
     Mat frame1=imread(name);
     Mat frame2=imread(name1);
+
+
     if(frame1.empty())
     {
         qDebug()<<"no frame1";
+         //throw an exception here
+
     }
     if(frame2.empty())
     {
         qDebug()<<"no frame2";
+         //throw an exception here
     }
 
-    ORB orb(80000,1.2f,8,31,0,3,ORB::HARRIS_SCORE,31);
+    ORB orb(60000,1.2f,8,31,0,3,ORB::HARRIS_SCORE,31);
 //    CV_WRAP explicit ORB(int nfeatures = 500, float scaleFactor = 1.2f, int nlevels = 8, int edgeThreshold = 31,
 //        int firstLevel = 0, int WTA_K=2, int scoreType=ORB::HARRIS_SCORE, int patchSize=31 );
     Mat des1;
@@ -149,11 +156,7 @@ int main(int argc, char *argv[])
     points1.clear();
     points2.clear();
     symmetryTest(good_matches1,good_matches2,symMatches);
-//    for(size_t q = 0; q < good_matches1.size(); q++)
-//    {
-//        points1.push_back(kp1[good_matches1[q].queryIdx].pt);
-//        points2.push_back(kp2[good_matches1[q].trainIdx].pt);
-//    }
+
     for(size_t q = 0; q < symMatches.size(); q++)
     {
         points1.push_back(kp1[symMatches[q].queryIdx].pt);
@@ -172,12 +175,20 @@ int main(int argc, char *argv[])
     {
     hom=findHomography(points2,points1,CV_RANSAC,2,homMask);
 
-    revhom=findHomography(points1,points2,CV_RANSAC,2,homMask);
+
     }
     else
     {
+
         hom=m*hom*findHomography(points2,points1,CV_RANSAC,2,homMask);
-        //revhom=hom.inv();
+        if(i==2)
+        {
+
+            revhom2=hom.inv();
+
+        }
+
+
     }
 
     Mat warpResult;
@@ -193,28 +204,12 @@ int main(int argc, char *argv[])
         corners[2] = cv::Point2f(frame2.cols,0);
         corners[3] = cv::Point2f(frame2.cols, frame2.rows);
 
-        std::vector<cv::Point2f> cornersTransform(4);
+
 
 
         cv::perspectiveTransform(corners, cornersTransform, hom);
-//        upRightCorner=cornersTransform[0];
-
-        for(size_t i = 0; i < 4; i++) {
-            std::cout << "cornersTransform[" << i << "]=" << cornersTransform[i] << std::endl;
-            std::cout << "corners[" << i << "]=" << corners[i] << std::endl;
-            if(abs(cornersTransform[i].x) > maxX) {
-
-                maxX = abs(cornersTransform[i].x);
-            }
-
-            if(abs(cornersTransform[i].y) > offsetY) {
-                maxY = abs(cornersTransform[i].y);
-            }
 
 
-        }
-//        offsetX=abs(offsetX);
-//        offsetY=abs(offsetY);
         for(size_t i = 0; i < 4; i++) {
             std::cout << "cornersTransform[" << i << "]=" << cornersTransform[i] << std::endl;
             std::cout << "corners[" << i << "]=" << corners[i] << std::endl;
@@ -229,38 +224,46 @@ int main(int argc, char *argv[])
 
 
         }
+
+
+        savedOffsetX=offsetX;
+        savedOffsetY=offsetY;
+
         offsetX=-offsetX;
         offsetY=-offsetY;
+
+        if(offsetX<0)
+        {
+            offsetX=0;
+        }
+        if(offsetY<0)
+        {
+            offsetY=0;
+
+        }
         double warpX=-INT64_MAX,warpY=-INT64_MAX;
         for(size_t i = 0; i < 4; i++) {
 
-            if(cornersTransform[i].x + offsetX> warpX ) {
+            if(cornersTransform[i].x> warpX ) {
 
                 warpX = cornersTransform[i].x;
             }
 
-            if(cornersTransform[i].y + offsetY> warpY) {
+            if(cornersTransform[i].y> warpY) {
                 warpY = cornersTransform[i].y;
             }
 
 
         }
 
-    Size size_warp(warpX,warpY);
-    qDebug()<<"size_warp";
-    qDebug()<<(double)map.cols<<warpX;
-    qDebug()<<(double)map.rows<<warpY;
+    Size size_warp(warpX+offsetX,warpY+offsetY);
+//    qDebug()<<"size_warp";
+//    qDebug()<<(double)map.cols<<warpX;
+//    qDebug()<<(double)map.rows<<warpY;
+
 
     m.at<double>(0,2) = offsetX;
     m.at<double>(1,2) = offsetY;
-
-
-//    //Get max offset outside of the image
-//    qDebug()<<"max?";
-//    qDebug()<<map.total();
-
-
-    // offsetY = 100;
 
 
 
@@ -306,14 +309,21 @@ int main(int argc, char *argv[])
 //     imshow("afterwarpnom",warpResult);
 
 //    Mat invwarp;
+//    Mat hom1=hom;
+//    hom1.at<double>(0,2)=0;
+//    hom1.at<double>(1,2)=0;
 
-     warpPerspective(frame2,warpResult,hom,size_warp);
+
+
+
+
+     warpPerspective(frame2,warpResult,m*hom,size_warp);
    //  warpPerspective(warpResult,invwarp,revhom,size_warp);
 
 
     namedWindow("afterwarp",WINDOW_NORMAL);
     resizeWindow("afterwarp", 600,600);
-     imshow("afterwarp",warpResult);
+   imwrite("/home/kim/Desktop/r/warpresult.jpg",warpResult);
 
 
 
@@ -322,17 +332,18 @@ int main(int argc, char *argv[])
     cv::Mat m1 = cv::Mat::eye(2, 3, CV_64F);
     m1.at<double>(0,2) = offsetX;
     m1.at<double>(1,2) = offsetY;
-    namedWindow("mapbefore",WINDOW_NORMAL);
-    resizeWindow("mapberfore", 600,600);
-    imshow("mapbefore",map);
+    //namedWindow("mapbefore",WINDOW_NORMAL);
+   // resizeWindow("mapberfore", 600,600);
+   // imshow("mapbefore",map);
 
 
 
 
-    warpAffine(map,map,m1,Size(max(map.cols+offsetX,warpX),max(map.rows+offsetY,warpY)));
+    warpAffine(map,map,m1,Size((double)map.cols+offsetX,(double)map.rows+offsetY));
+//    m1rev=m1.inv();
     namedWindow("mapafter",WINDOW_NORMAL);
     resizeWindow("mapafter", 600,600);
-    imshow("mapafter",map);
+    imwrite("/home/kim/Desktop/r/map.jpg",map);
 
 
 
@@ -341,18 +352,75 @@ int main(int argc, char *argv[])
 
 
      Mat newmask,oldmask;
-     Mat newmap(std::max((double)map.rows+offsetY,warpY),std::max((double)map.cols+offsetX,warpX),frame1.type());
 
-     newmap.setTo(0);
+//     if((double)map.rows<warpY &&  (double)map.rows<warpX)
+//     {
+//         map.resize(warpResult.cols,warpResult.rows);
+
+//     }
+//     else if((double)map.rows>warpY &&  (double)map.cols<warpX)
+//     {
+//         warpResult.resize(warpResult.cols,map.rows);
+//         map.resize(warpResult.cols,map.rows);
+
+//     }
+//     else if((double)map.rows<warpY &&  (double)map.cols>warpX)
+//     {
+//         warpResult.resize(map.cols,warpResult.rows);
+//         map.resize(map.cols,warpResult.rows);
 
 
-     cv::Mat oldpart(newmap,cv::Rect(0,0,map.cols,map.rows));
-     //cv::Mat oldpart(map1,cv::Rect(offsetX,offsetY,map.cols,map.rows));
-     //this block of code worked last night:/ today it just make garbeges.
-     inRange(warpResult,Scalar(1,0,0),Scalar(255,255,255),newmask);
-     inRange(map,Scalar(1,0,0),Scalar(255,255,255),oldmask);
-     map.copyTo(newmap,oldmask);
-     warpResult.copyTo(newmap,newmask);
+//     }
+//     else
+//     {
+
+//         warpResult.resize(map.rows,map.cols);
+
+
+//     }
+
+
+
+
+//     cv::Mat oldpart(newmap,cv::Rect(offsetX,offsetY,map.cols,map.rows));
+     qDebug()<<"freaking upset is"<<offsetX<<"   "<<offsetY;
+
+//     //this block of code worked last night:/ today it just make garbeges.
+
+        inRange(map,Scalar(1,0,0),Scalar(255,255,255),oldmask);
+        inRange(warpResult,Scalar(1,0,0),Scalar(255,255,255),newmask);
+
+//              Mat warpResultMask;
+//              cvtColor(warpResult,warpResultMask,COLOR_BGR2GRAY);
+//              threshold(warpResultMask,warpResultMask, 100, 255, THRESH_BINARY);
+
+//              // 4. Splitting & adding Alpha
+//              vector<Mat> channels;   // C++ version of ArrayList<Mat>
+//              split(warpResult, channels);   // Automatically splits channels and adds them to channels. The size of channels = 3
+//              channels.push_back(warpResultMask);   // Adds mask(alpha) channel. The size of channels = 4
+
+//              // 5. Merging
+//              Mat warpResultRoi;
+//              merge(channels, warpResultRoi);
+                Mat newmap(std::max((double)map.rows+offsetY,warpY),std::max((double)map.cols+offsetX,warpX),frame1.type());
+               newmap.setTo(0);
+
+             //cv::Mat mapRoi(newmap,cv::Rect(cornersTransform[0].x+offsetX,cornersTransform[0].y+offsetY,warpResult.cols,warpResult.rows));
+
+
+              cv::Mat newpart(newmap,cv::Rect(0,0,warpResult.cols,warpResult.rows));
+//                    namedWindow("newmap1",WINDOW_NORMAL);
+//                    namedWindow("newmap1",WINDOW_NORMAL);
+//                    resizeWindow("newmap1",700,700);
+//                    imshow("newmap1",warpResultRoi);
+                      cv::Mat oldpart(newmap,cv::Rect(0,0,map.cols,map.rows));
+                 map.copyTo(oldpart);
+              warpResult.copyTo(newpart,newmask);
+
+
+
+
+
 
 //the dumbest way to do the blending:)
 //    for(int i=0;i<warpResult.rows;i++)
@@ -377,20 +445,86 @@ int main(int argc, char *argv[])
 
 //        }
 
-   // }
-    qDebug()<<"over";
-     imwrite("/home/kim/Desktop/tests/result1.jpg",newmap);
-     //Mat newmap1;
-//    if((i+1)%2==1)
-//    {
-//        qDebug()<<"on loop";
-//        Mat correctionHom=savedHoms[i-1];
-
-//        Mat correctionrevHom=correctionHom.inv();
-//        Size size_correctedMap(1000,1000);//this is wrong !
-//        warpPerspective(newmap1,newmap,correctionrevHom,size_correctedMap);
-//        hom=hom/correctionHom;
 //    }
+
+
+    qDebug()<<"over";
+     imwrite("/home/kim/Desktop/r/result1.jpg",newmap);
+     Mat newmap1;
+     Mat newmap2;
+    if(i==1000)
+    {
+        std::vector<cv::Point2f> corners(4);
+        corners[0] = cv::Point2f(0, 0);
+        corners[1] = cv::Point2f(0, newmap.rows);
+        corners[2] = cv::Point2f(newmap.cols,0);
+        corners[3] = cv::Point2f(newmap.cols, newmap.rows);
+
+        std::vector<cv::Point2f> cornersTransform(4);
+
+
+
+        cv::perspectiveTransform(corners, cornersTransform, revhom2);
+         double offsetXinv;
+         double offsetYinv;
+
+
+//        offsetX=abs(offsetX);
+//        offsetY=abs(offsetY);
+        for(size_t i = 0; i < 4; i++) {
+            std::cout << "cornersTransform[" << i << "]=" << cornersTransform[i] << std::endl;
+            std::cout << "corners[" << i << "]=" << corners[i] << std::endl;
+            if(cornersTransform[i].x < offsetXinv) {
+
+               offsetXinv = cornersTransform[i].x;
+            }
+
+            if(cornersTransform[i].y < offsetYinv) {
+               offsetYinv = cornersTransform[i].y;
+            }
+
+
+        }
+        offsetXinv=-offsetXinv;
+        offsetYinv=-offsetYinv;
+        Mat minv=Mat::eye(Size(3,3),CV_64F);
+
+        minv.at<double>(0,2) = offsetXinv;
+        minv.at<double>(1,2) = offsetYinv;
+        double warpXinv=-INT64_MAX,warpYinv=-INT64_MAX;
+        for(size_t i = 0; i < 4; i++) {
+
+            if(corners[i].x + offsetXinv> warpXinv ) {
+
+                warpXinv = cornersTransform[i].x;
+            }
+
+            if(corners[i].y + offsetYinv> warpYinv) {
+                warpYinv = cornersTransform[i].y ;
+            }
+
+
+        }
+
+    Size size_warp_inv(warpXinv,warpYinv);
+
+
+
+       // warpPerspective(newmap,newmap1,revhom1,Size(newmap.cols+400,newmap.rows+400));
+        warpPerspective(newmap,newmap2,/*m1rev**/minv*revhom2,(size_warp_inv));
+        hom=minv*revhom2*hom;
+  /*      namedWindow("newmap1",WINDOW_NORMAL);
+        namedWindow("newmap1",WINDOW_NORMAL);
+        resizeWindow("newmap1",700,700);
+        imshow("newmap1",newmap1)*/;
+        //waitkey(1);
+        namedWindow("newmap2",WINDOW_NORMAL);
+        namedWindow("newmap2",WINDOW_NORMAL);
+        resizeWindow("newmap2",700,700);
+        imshow("newmap2",newmap2);
+        waitKey(1);
+
+    }
    //  imwrite("/home/kim/Desktop/tests/result2.jpg",newmap1);
 
 
@@ -399,6 +533,8 @@ int main(int argc, char *argv[])
 
     namedWindow("blendR",WINDOW_NORMAL);
     resizeWindow("blendR", 600,600);
+//        if(i==3)
+//              imwrite("/home/kim/Desktop/tests/result1.jpg",newmap2);
 
     imshow("blendR",newmap);
 
